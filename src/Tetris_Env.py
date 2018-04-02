@@ -31,8 +31,11 @@ class TetrisEnv(Env):
 
     def reset(self):
         self.board = [[0] * Col for i in range(Row)]
+        self.top = [0] * Col
         self.currentPiece = self.new_piece()
         self.nextPiece = self.new_piece()
+        observation = (deepcopy(self.board), self.currentPiece, self.nextPiece)
+        return observation, 0, False, self.info
 
     def render(self, mode='human', close=False):
         pass
@@ -60,6 +63,7 @@ class TetrisEnv(Env):
 
         if height + pHeight[self.currentPiece][orient] >= Row:
             is_done = True
+            return reward, is_done
 
         for i in range(pWidth[self.currentPiece][orient]):
             for h in range(height + pBottom[self.currentPiece][orient][i], height + pTop[self.currentPiece][orient][i]):
@@ -104,14 +108,14 @@ class TetrisEnv(Env):
             if seed is not None:
                 self.random_action.seed = seed
             piece_type = self.env.currentPiece
-            choice_action = self.random_action.randrange((self.legal_moves[piece_type]).size)
+            choice_action = self.random_action.randrange(len(self.legal_moves[piece_type]))
             return self.legal_moves[piece_type][choice_action]
 
         def initialise_legal_moves(self):
             for i in range(Num_Types):
                 n = 0
                 for j in range(pOrients[i]):
-                    n = n + Col+ 1 -pWidth[i][j]
+                    n = n + Col+ 1 - pWidth[i][j]
                 type_i_actions = []
                 for j in range(pOrients[i]) :
                     for k in range(Col + 1 - pWidth[i][j]) :
