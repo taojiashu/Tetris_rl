@@ -7,7 +7,7 @@ class TetrisEnv(Env):
     Num_Types = 7
     Col = 10
     Row = 21
-    random_seed = 0;
+    random_seed = 0
     board = [[0]*Col for i in range(Row)]
     top = [0]*Col
     currentPiece = None
@@ -15,7 +15,7 @@ class TetrisEnv(Env):
     info = None
 
     def step(self, action):
-        reward, isDone = self.perform_action(self.board, action)
+        reward, isDone = self.perform_action(self, action)
         self.currentPiece = self.nextPiece
         self.nextPiece = self.new_piece()
         observation = (deepcopy(self.board), self.currentPiece, self.nextPiece)
@@ -52,11 +52,11 @@ class TetrisEnv(Env):
             isDone = True
 
         for i in range(pWidth[self.currentPiece][orient]):
-			for h in range(height+pBottom[self.currentPiece][orient][i], height+pTop[self.currentPiece][orient][i]):
-				self.board[h][i+slot] = 1
+            for h in range(height+pBottom[self.currentPiece][orient][i], height+pTop[self.currentPiece][orient][i]):
+                self.board[h][i+slot] = 1
 
 
-		for c in range(pWidth[self.currentPiece][orient]):
+        for c in range(pWidth[self.currentPiece][orient]):
             self.top[slot+c]=height+pTop[self.currentPiece][orient][c]
 
 
