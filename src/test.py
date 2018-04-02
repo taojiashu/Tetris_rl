@@ -1,4 +1,4 @@
-from .Tetris_Env import TetrisEnv
+from src.Tetris_Env import TetrisEnv
 from copy import deepcopy
 
 env = TetrisEnv()

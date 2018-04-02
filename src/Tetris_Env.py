@@ -1,18 +1,27 @@
-from rl.core import Env
+from rl.core import Env, Space
 from copy import deepcopy
-from .configuration import pOrients, pWidth, pHeight, pTop, pBottom,
-import random
+from src.configuration import pOrients, pWidth, pHeight, pTop, pBottom
+from random import Random
 
 class TetrisEnv(Env):
     Num_Types = 7
     Col = 10
     Row = 21
-    random_seed = 0
-    board = [[0]*Col for i in range(Row)]
-    top = [0]*Col
+    randomness = Random()
+    randomness.seed = 0
+
+    board = None
+    top = None
     currentPiece = None
     nextPiece = None
     info = None
+
+    def __init__(self):
+        self.board = [[0] * self.Col for i in range(self.Row)]
+        self.top = [0] * self.Col
+        self.currentPiece = self.new_piece()
+        self.nextPiece = self.new_piece()
+        self.action_space = self.ActionSpace(self)
 
     def step(self, action):
         orient, slot = action
@@ -23,7 +32,9 @@ class TetrisEnv(Env):
         return observation, reward, is_done, self.info
 
     def reset(self):
-        self.random_seed = 0
+        self.board = [[0]*self.Col for i in range(self.Row)]
+        self.currentPiece = self.new_piece()
+        self.nextPiece = self.new_piece()
 
     def render(self, mode='human', close=False):
         pass
@@ -32,14 +43,15 @@ class TetrisEnv(Env):
         pass
 
     def seed(self, seed=None):
-        random_seed = seed
-        return random_seed
+        if seed is not None:
+            self.randomness.seed = seed
+        return self.randomness.seed
 
     def configure(self, *args, **kwargs):
         pass
 
     def new_piece(self):
-        return random.randrange(0,self.Num_Types)
+        return self.randomness.randrange(0,self.Num_Types)
 
     def perform_action(self, orient, slot):
         reward = 0.1
@@ -77,3 +89,19 @@ class TetrisEnv(Env):
                         self.top[c]= self.top[c]-1
 
         return reward, is_done
+
+    class ActionSpace(Space):
+
+        env = None
+        random_action = Random()
+        random_action.seed = 0
+
+        def __init__(self, env):
+            self.env = env
+
+        def contains(self, x):
+            pass
+
+        def sample(self, seed=None):
+            if seed is not None:
+                self.random_action.seed = seed
