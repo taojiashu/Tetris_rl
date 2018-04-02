@@ -1,3 +1,6 @@
+Col = 10
+Row = 21
+Num_Types = 7
 
 pOrients = [1,2,4,4,4,2,2]
 
