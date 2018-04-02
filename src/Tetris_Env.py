@@ -1,6 +1,6 @@
 from rl.core import Env
 from copy import deepcopy
-from configuration import pOrients, pWidth, pHeight, pTop, pBottom,
+from .configuration import pOrients, pWidth, pHeight, pTop, pBottom,
 import random
 
 class TetrisEnv(Env):
@@ -15,11 +15,12 @@ class TetrisEnv(Env):
     info = None
 
     def step(self, action):
-        reward, isDone = self.perform_action(self, action)
+        orient, slot = action
+        reward, is_done = self.perform_action(orient, slot)
         self.currentPiece = self.nextPiece
         self.nextPiece = self.new_piece()
         observation = (deepcopy(self.board), self.currentPiece, self.nextPiece)
-        return observation, reward, isDone, self.info
+        return observation, reward, is_done, self.info
 
     def reset(self):
         self.random_seed = 0
@@ -40,16 +41,15 @@ class TetrisEnv(Env):
     def new_piece(self):
         return random.randrange(0,self.Num_Types)
 
-    def perform_action(self, action):
+    def perform_action(self, orient, slot):
         reward = 0.1
-        isDone = False
-        orient, slot = action
+        is_done = False
         height = self.top[slot] - pBottom[self.currentPiece][orient][0]
         for c in range(pWidth[self.currentPiece][orient]):
             height = max(height,self.top[slot+c]-pBottom[self.currentPiece][orient][c])
 
-        if (height+pHeight[self.currentPiece][orient] >= self.Row):
-            isDone = True
+        if height+pHeight[self.currentPiece][orient] >= self.Row:
+            is_done = True
 
         for i in range(pWidth[self.currentPiece][orient]):
             for h in range(height+pBottom[self.currentPiece][orient][i], height+pTop[self.currentPiece][orient][i]):
@@ -63,18 +63,17 @@ class TetrisEnv(Env):
         for r in range(height+pHeight[self.currentPiece][orient]-1, height-1,-1):
             full = True
             for c in range(self.Col):
-                if(self.board[r][c] == 0):
+                if self.board[r][c] == 0:
                     full = False
                     break
 
-
-            if (full) :
+            if full:
                 reward = reward + 1
                 for c in range(self.Col):
                     for i in range(r, self.top[c]):
                         self.board[i][c] = self.board[i+1][c]
                     self.top[c] = self.top[c] - 1
-                    while (self.top[c]>=1 and self.board[self.top[c]-1][c]==0):
+                    while self.top[c]>=1 and self.board[self.top[c] - 1][c]==0:
                         self.top[c]= self.top[c]-1
 
-        return reward, isDone
+        return reward, is_done
