@@ -96,6 +96,7 @@ class TetrisEnv(Env):
         random_action = Random()
         random_action.seed = 0
         legal_moves= []
+        n = 0
 
         def __init__(self, env):
             self.env = env
@@ -116,6 +117,7 @@ class TetrisEnv(Env):
                 n = 0
                 for j in range(pOrients[i]):
                     n = n + Col+ 1 - pWidth[i][j]
+                self.n = max(self.n, n)
                 type_i_actions = []
                 for j in range(pOrients[i]) :
                     for k in range(Col + 1 - pWidth[i][j]) :
