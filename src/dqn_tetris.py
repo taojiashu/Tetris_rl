@@ -1,41 +1,42 @@
-from __future__ import division
+#from __future__ import division
 
 import argparse
 
 import numpy as np
-
+from keras.layers import Dense, Activation, Flatten
 from keras.models import Sequential
-from keras.layers import Dense, Activation, Flatten, Convolution2D, Permute
 from keras.optimizers import Adam
-import keras.backend as K
-
 from rl.agents.dqn import DQNAgent
-from rl.policy import LinearAnnealedPolicy, BoltzmannQPolicy, EpsGreedyQPolicy
-from rl.memory import SequentialMemory
-from rl.core import Processor
 from rl.callbacks import FileLogger, ModelIntervalCheckpoint
+from rl.core import Processor
+from rl.memory import SequentialMemory
+from rl.policy import LinearAnnealedPolicy, EpsGreedyQPolicy
 
 from src.Tetris_Env import TetrisEnv
+from src.configuration import Num_Types
 
-INPUT_SHAPE = (84, 84)
+Window_Length = 4
 
-WINDOW_LENGTH = 4
 
 class TetrisProcessor(Processor):
 
     def process_observation(self, observation):
 
-        assert observation.ndim == 3  # (height, width, channel)
+        board, piece1, piece2 = observation
+        flatten_board = np.array(board).flatten()
+        list_1= []
+        for i in range(Num_Types):
+            if i == piece1:
+                list_1.append(1)
+            else:
+                list_1.append(0)
+        for i in range(Num_Types):
+            if i == piece2:
+                list_1.append(1)
+            else:
+                list_1.append(0)
 
-        img = Image.fromarray(observation)
-
-        img = img.resize(INPUT_SHAPE).convert('L')  # resize and convert to grayscale
-
-        processed_observation = np.array(img)
-
-        assert processed_observation.shape == INPUT_SHAPE
-
-        return processed_observation.astype('uint8')  # saves storage in experience memory
+        return np.append(flatten_board, list_1).astype('uint8')  # saves storage in experience memory
 
 
 
@@ -66,26 +67,13 @@ env.seed(123)
 
 nb_actions = env.action_space.n
 
-# Next, we build our model. We use the same model that was described by Mnih et al. (2015).
-input_shape = (WINDOW_LENGTH,) + INPUT_SHAPE
 model = Sequential()
-if K.image_dim_ordering() == 'tf':
-    # (width, height, channels)
-    model.add(Permute((2, 3, 1), input_shape=input_shape))
-elif K.image_dim_ordering() == 'th':
-    # (channels, width, height)
-    model.add(Permute((1, 2, 3), input_shape=input_shape))
-else:
-    raise RuntimeError('Unknown image_dim_ordering.')
+input_shape = (Window_Length,) + (224,)
 
-model.add(Convolution2D(32, 8, 8, subsample=(4, 4)))
-model.add(Activation('relu'))
-model.add(Convolution2D(64, 4, 4, subsample=(2, 2)))
-model.add(Activation('relu'))
-model.add(Convolution2D(64, 3, 3, subsample=(1, 1)))
+model.add(Dense(128, input_shape = input_shape))
 model.add(Activation('relu'))
 model.add(Flatten())
-model.add(Dense(512))
+model.add(Dense(128))
 model.add(Activation('relu'))
 model.add(Dense(nb_actions))
 model.add(Activation('linear'))
@@ -97,7 +85,7 @@ print(model.summary())
 
 # even the metrics!
 
-memory = SequentialMemory(limit=1000000, window_length=WINDOW_LENGTH)
+memory = SequentialMemory(limit=1000000, window_length=4)
 
 processor = TetrisProcessor()
 
@@ -123,9 +111,9 @@ dqn.compile(Adam(lr=.00025), metrics=['mae'])
 if args.mode == 'train':
     # Okay, now it's time to learn something! We capture the interrupt exception so that training
     # can be prematurely aborted. Notice that you can the built-in Keras callbacks!
-    weights_filename = 'dqn_{}_weights.h5f'.format(args.env_name)
-    checkpoint_weights_filename = 'dqn_' + args.env_name + '_weights_{step}.h5f'
-    log_filename = 'dqn_{}_log.json'.format(args.env_name)
+    weights_filename = 'dqn_tetris_weights.h5f'
+    checkpoint_weights_filename = 'dqn_tetris' + '_weights_{step}.h5f'
+    log_filename = 'dqn_tetris_log.json'
     callbacks = [ModelIntervalCheckpoint(checkpoint_weights_filename, interval=250000)]
     callbacks += [FileLogger(log_filename, interval=100)]
     dqn.fit(env, callbacks=callbacks, nb_steps=1750000, log_interval=10000)
@@ -134,7 +122,7 @@ if args.mode == 'train':
     # Finally, evaluate our algorithm for 10 episodes.
     dqn.test(env, nb_episodes=10, visualize=False)
 elif args.mode == 'test':
-    weights_filename = 'dqn_{}_weights.h5f'.format(args.env_name)
+    weights_filename = 'dqn_tetris_weights.h5f'
     if args.weights:
         weights_filename = args.weights
     dqn.load_weights(weights_filename)

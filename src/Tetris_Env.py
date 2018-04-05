@@ -12,7 +12,8 @@ class TetrisEnv(Env):
     top = None
     currentPiece = None
     nextPiece = None
-    info = None
+    info = {"dummp":1}
+    evaluation = 0
 
     def __init__(self):
         self.board = [[0] * Col for i in range(Row)]
@@ -22,8 +23,14 @@ class TetrisEnv(Env):
         self.action_space = self.ActionSpace(self)
 
     def step(self, action):
-        orient, slot = action
-        reward, is_done = self.perform_action(orient, slot)
+        if action < len(self.action_space.legal_moves[self.currentPiece]):
+            orient, slot = self.action_space.legal_moves[self.currentPiece][action]
+        else:
+            orient, slot = self.action_space.legal_moves[self.currentPiece][self.action_space.sample()]
+        true_reward, is_done = self.perform_action(orient, slot)
+        new_evaluation = self.evaluate_board()
+        reward = new_evaluation - self.evaluation + 100
+        self.evaluation = new_evaluation
         self.currentPiece = self.nextPiece
         self.nextPiece = self.new_piece()
         observation = (deepcopy(self.board), self.currentPiece, self.nextPiece)
@@ -32,10 +39,11 @@ class TetrisEnv(Env):
     def reset(self):
         self.board = [[0] * Col for i in range(Row)]
         self.top = [0] * Col
+        evaluation = 0
         self.currentPiece = self.new_piece()
         self.nextPiece = self.new_piece()
         observation = (deepcopy(self.board), self.currentPiece, self.nextPiece)
-        return observation, 0, False, self.info
+        return observation
 
     def render(self, mode='human', close=False):
         pass
@@ -55,7 +63,7 @@ class TetrisEnv(Env):
         return self.randomness.randrange(0, Num_Types)
 
     def perform_action(self, orient, slot):
-        reward = 0.1
+        reward = 0
         is_done = False
         height = self.top[slot] - pBottom[self.currentPiece][orient][0]
         for c in range(pWidth[self.currentPiece][orient]):
@@ -90,6 +98,20 @@ class TetrisEnv(Env):
 
         return reward, is_done
 
+    def evaluate_board(self):
+        total_height = sum(self.top)
+        max_height = max(self.top)
+        diff_height = 0
+        for i in range(Col - 1):
+            diff_height = diff_height + abs(self.top[i] - self.top[i+1])
+        holes = 0
+        for i in range(Row):
+            for j in range(Col):
+                if self.board[i][j] == 0 and i < self.top[j]:
+                    holes = holes + 1
+        # arbitrary reward function
+        return - 0.1 * total_height - max_height - 0.1 * diff_height - holes
+
     class ActionSpace(Space):
 
         env = None
@@ -110,7 +132,7 @@ class TetrisEnv(Env):
                 self.random_action.seed = seed
             piece_type = self.env.currentPiece
             choice_action = self.random_action.randrange(len(self.legal_moves[piece_type]))
-            return self.legal_moves[piece_type][choice_action]
+            return choice_action
 
         def initialise_legal_moves(self):
             for i in range(Num_Types):
