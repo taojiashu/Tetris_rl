@@ -2,6 +2,7 @@ from rl.core import Env, Space
 from copy import deepcopy
 from src.configuration import pOrients, pWidth, pHeight, pTop, pBottom, Num_Types, Col, Row
 from random import Random
+import numpy as np
 
 
 class TetrisEnv(Env):
@@ -24,17 +25,32 @@ class TetrisEnv(Env):
         self.action_space = self.ActionSpace(self)
 
     def step(self, action):
+        max_evaluation = self.find_max_evaluation()
         orient, slot = self.action_space.legal_moves[self.currentPiece][action % len(
             self.action_space.legal_moves[self.currentPiece])]
-        score, is_done = self.perform_action(orient, slot)
-        self.total_score = self.total_score + score
-        new_evaluation = self.evaluate_board() + self.total_score * 0.760666
-        reward = new_evaluation - self.evaluation + 100
-        self.evaluation = new_evaluation
+        score, is_done = self.perform_action(self.board, self.top, orient, slot)
+
+        ## self.total_score = self.total_score + score
+        ## new_evaluation = self.evaluate_board(self.board, self.top) + self.total_score * 0.760666
+        ## reward = new_evaluation - self.evaluation + 100
+        ## self.evaluation = new_evaluation
+        reward = 0
+        if self.evaluate_board(self.board, self.top) >= max_evaluation - 0.0001:
+            reward = 100
+
         self.currentPiece = self.nextPiece
         self.nextPiece = self.new_piece()
         observation = (deepcopy(self.board), self.currentPiece, self.nextPiece)
         return observation, reward, is_done, self.info
+
+    def find_max_evaluation(self):
+        max_evaluation = -np.inf
+        for orient, slot in self.action_space.legal_moves[self.currentPiece]:
+            board_copy = deepcopy(self.board)
+            top_copy = deepcopy(self.top)
+            self.perform_action(board_copy, top_copy, orient, slot)
+            max_evaluation = max(max_evaluation, self.evaluate_board(board_copy, top_copy))
+        return max_evaluation
 
     def reset(self):
         self.board = [[0] * Col for i in range(Row)]
@@ -63,12 +79,12 @@ class TetrisEnv(Env):
     def new_piece(self):
         return self.randomness.randrange(0, Num_Types)
 
-    def perform_action(self, orient, slot):
+    def perform_action(self, board, top, orient, slot):
         reward = 0
         is_done = False
-        height = self.top[slot] - pBottom[self.currentPiece][orient][0]
+        height = top[slot] - pBottom[self.currentPiece][orient][0]
         for c in range(pWidth[self.currentPiece][orient]):
-            height = max(height, self.top[slot + c] - pBottom[self.currentPiece][orient][c])
+            height = max(height, top[slot + c] - pBottom[self.currentPiece][orient][c])
 
         if height + pHeight[self.currentPiece][orient] >= Row:
             is_done = True
@@ -77,38 +93,38 @@ class TetrisEnv(Env):
 
         for i in range(pWidth[self.currentPiece][orient]):
             for h in range(height + pBottom[self.currentPiece][orient][i], height + pTop[self.currentPiece][orient][i]):
-                self.board[h][i + slot] = 1
+                board[h][i + slot] = 1
 
         for c in range(pWidth[self.currentPiece][orient]):
-            self.top[slot + c] = height + pTop[self.currentPiece][orient][c]
+            top[slot + c] = height + pTop[self.currentPiece][orient][c]
 
         for r in range(height + pHeight[self.currentPiece][orient] - 1, height - 1, -1):
             full = True
             for c in range(Col):
-                if self.board[r][c] == 0:
+                if board[r][c] == 0:
                     full = False
                     break
 
             if full:
                 reward = reward + 1
                 for c in range(Col):
-                    for i in range(r, self.top[c]):
-                        self.board[i][c] = self.board[i + 1][c]
-                    self.top[c] = self.top[c] - 1
-                    while self.top[c] >= 1 and self.board[self.top[c] - 1][c] == 0:
-                        self.top[c] = self.top[c] - 1
+                    for i in range(r, top[c]):
+                        board[i][c] = board[i + 1][c]
+                    top[c] = top[c] - 1
+                    while top[c] >= 1 and board[top[c] - 1][c] == 0:
+                        top[c] = top[c] - 1
 
         return reward, is_done
 
-    def evaluate_board(self):
-        total_height = sum(self.top)
+    def evaluate_board(self, board, top):
+        total_height = sum(top)
         diff_height = 0
         for i in range(Col - 1):
-            diff_height = diff_height + abs(self.top[i] - self.top[i+1])
+            diff_height = diff_height + abs(top[i] - top[i+1])
         holes = 0
         for i in range(Row):
             for j in range(Col):
-                if self.board[i][j] == 0 and i < self.top[j]:
+                if board[i][j] == 0 and i < top[j]:
                     holes = holes + 1
         # arbitrary reward function from online source
         return -0.510066 * total_height - 0.184483 * diff_height - 0.35663 * holes
