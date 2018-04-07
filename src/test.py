@@ -1,11 +1,11 @@
 from src.Tetris_Env import TetrisEnv
+from src.tetris_generator import TetrisGenerator
+generator = TetrisGenerator()
 
-env = TetrisEnv()
-action = env.action_space
-_,reward, _,_ = env.step(action.sample())
-env.step(action.sample())
-print(env.top)
-for i in range(20,-1,-1):
-    print(env.board[i])
-print(reward)
 
+observation, action = generator.__getitem__(1)
+print(observation)
+print(action)
+observation, action = generator.__getitem__(2)
+print(observation)
+print(action)

@@ -14,42 +14,9 @@ from rl.policy import LinearAnnealedPolicy, EpsGreedyQPolicy, BoltzmannQPolicy
 
 from src.Tetris_Env import TetrisEnv
 from src.configuration import Num_Types
+from src.tetris_processor import TetrisProcessor
 
-Window_Length = 4
-
-
-class TetrisProcessor(Processor):
-
-    def process_observation(self, observation):
-
-        board, piece1, piece2 = observation
-        flatten_board = np.array(board).flatten()
-        list_1= []
-        for i in range(Num_Types):
-            if i == piece1:
-                list_1.append(1)
-            else:
-                list_1.append(0)
-        for i in range(Num_Types):
-            if i == piece2:
-                list_1.append(1)
-            else:
-                list_1.append(0)
-
-        return np.append(flatten_board, list_1).astype('uint8')  # saves storage in experience memory
-
-
-
-    def process_state_batch(self, batch):
-
-        # We could perform this processing step in `process_observation`. In this case, however,
-        # we would need to store a `float32` array instead, which is 4x more memory intensive than
-        # an `uint8` array. This matters if we store 1M observations.
-        processed_batch = batch.astype('float32') / 255.
-        return processed_batch
-
-    def process_reward(self, reward):
-        return reward
+Window_Length = 1
 
 
 parser = argparse.ArgumentParser()
@@ -67,14 +34,15 @@ env.seed(123)
 
 nb_actions = env.action_space.n
 
+
 model = Sequential()
 input_shape = (Window_Length,) + (224,)
 
-model.add(Dense(128, input_shape = input_shape))
+model.add(Dense(64, input_shape = input_shape))
 model.add(Activation('relu'))
 model.add(Flatten())
-model.add(Dense(128))
-model.add(Activation('relu'))
+#model.add(Dense(256))
+#model.add(Activation('relu'))
 model.add(Dense(nb_actions))
 model.add(Activation('softmax'))
 print(model.summary())
@@ -85,7 +53,7 @@ print(model.summary())
 
 # even the metrics!
 
-memory = SequentialMemory(limit=1000000, window_length=4)
+memory = SequentialMemory(limit=1000000, window_length=Window_Length)
 
 processor = TetrisProcessor()
 

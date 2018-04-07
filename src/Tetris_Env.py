@@ -7,13 +7,12 @@ import numpy as np
 
 class TetrisEnv(Env):
     randomness = Random()
-    randomness.seed = 0
 
     board = None
     top = None
     currentPiece = None
     nextPiece = None
-    info = {"dummp":1}
+    info = {"dummy_info":1}
     total_score = 0
     evaluation = 0
 
@@ -28,9 +27,9 @@ class TetrisEnv(Env):
         max_evaluation = self.find_max_evaluation()
         orient, slot = self.action_space.legal_moves[self.currentPiece][action % len(
             self.action_space.legal_moves[self.currentPiece])]
-        score, is_done = self.perform_action(self.board, self.top, orient, slot)
+        _, score, is_done = self.perform_action(self.board, self.top, orient, slot)
+        self.total_score = self.total_score + score
 
-        ## self.total_score = self.total_score + score
         ## new_evaluation = self.evaluate_board(self.board, self.top) + self.total_score * 0.760666
         ## reward = new_evaluation - self.evaluation + 100
         ## self.evaluation = new_evaluation
@@ -89,7 +88,7 @@ class TetrisEnv(Env):
         if height + pHeight[self.currentPiece][orient] >= Row:
             is_done = True
             #death penalty
-            return -1000, is_done
+            return -1000, -1000, is_done
 
         for i in range(pWidth[self.currentPiece][orient]):
             for h in range(height + pBottom[self.currentPiece][orient][i], height + pTop[self.currentPiece][orient][i]):
@@ -98,6 +97,7 @@ class TetrisEnv(Env):
         for c in range(pWidth[self.currentPiece][orient]):
             top[slot + c] = height + pTop[self.currentPiece][orient][c]
 
+        evaluation = self.evaluate_board(board, top)
         for r in range(height + pHeight[self.currentPiece][orient] - 1, height - 1, -1):
             full = True
             for c in range(Col):
@@ -114,7 +114,7 @@ class TetrisEnv(Env):
                     while top[c] >= 1 and board[top[c] - 1][c] == 0:
                         top[c] = top[c] - 1
 
-        return reward, is_done
+        return evaluation, reward, is_done
 
     def evaluate_board(self, board, top):
         total_height = sum(top)
@@ -127,13 +127,11 @@ class TetrisEnv(Env):
                 if board[i][j] == 0 and i < top[j]:
                     holes = holes + 1
         # arbitrary reward function from online source
-        return -0.510066 * total_height - 0.184483 * diff_height - 0.35663 * holes
+        return -0.510066 * total_height - 0.184483 * diff_height - 0.35663 * holes + self.total_score * 0.760666
 
     class ActionSpace(Space):
-
         env = None
         random_action = Random()
-        random_action.seed = 0
         legal_moves= []
         n = 0
 
